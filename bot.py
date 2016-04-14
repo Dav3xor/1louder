@@ -38,14 +38,16 @@ class LoudHailer(object):
 def convert_to_dict(items_list):
   return {i.id : i for i in items_list}
 
-def get_dict_item(cur_dict, item, search_list):
+def get_dict_item(cur_dict, item, key, search_list):
   if item not in cur_dict:
     cur_dict = convert_to_dict(search_list)
-
-  if item not in cur_dict:
+  elif item not in cur_dict:
+    return "unknown"
+  elif key not in item:
     return "unknown"
   else:
     return cur_dict[item]
+
 
 loud_user = "sekrit"
 token     = "more sekrit"
@@ -65,13 +67,13 @@ if sc.rtm_connect():
       if 'type' in response and response['type'] == 'message' and 'text' in response:
         message = response['text']
         user    = get_dict_item(users, 
-                                response['user'], 
+                                response, 'user', 
                                 sc.server.users).name
         channel = get_dict_item(channels, 
-                                response['channel'], 
+                                response, 'channel', 
                                 sc.server.channels).name
         domain  = get_dict_item(channels, 
-                                response['channel'], 
+                                response, 'channel', 
                                 sc.server.channels).server.domain
         
         print "%s (%s/%s) -- %s" % (user,domain,channel,message)
