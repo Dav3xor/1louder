@@ -48,8 +48,9 @@ def get_dict_item(cur_dict, item, search_list):
     return cur_dict[item]
 
 loud_user = "sekrit"
-token = "more sekrit"
+token     = "more sekrit"
 louds     = LoudHailer()
+
 sc = SlackClient(token)
 
 if sc.rtm_connect():
