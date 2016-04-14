@@ -9,20 +9,26 @@ r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 
 class LoudHailer(object):
-  uppercase = frozenset(string.uppercase)
-  all_caps = re.compile('^[A-Z\d\s\!\@\#\$\%\^\&\*'+
-                        '\(\)\_\+\-\=\[\]\{\}\|\;\''+
-                        '\:\"\,\.\/\<\>\?]*$')
+  uppercase   = frozenset(string.uppercase)
+  all_caps    = re.compile('^[A-Z\d\s\!\@\#\$\%\^\&\*'+
+                         '\(\)\_\+\-\=\[\]\{\}\|\;\''+
+                         '\:\"\,\.\/\<\>\?]*$')
   def num_uppercase(self, loud):
     return sum(1 for c in message if c in self.uppercase)
+
   def add(self, loud, user, channel, domain):
-    words = loud.split(' ')
     if re.match(self.all_caps, loud) and self.num_uppercase(loud)>4:
       response = r.srandmember('louds')
-      r.hset('loudlast', domain+'/'+channel, response)
+      r.hset('loudlast', 
+             domain+'/'+channel, 
+             response)
+
       if not r.sismember('louds',loud):
         r.sadd('louds',loud)
-        r.hset('loudinfo', loud, json.dumps([user,channel,domain]))
+        r.hset('loudinfo', 
+               loud, 
+               json.dumps([user,channel,domain]))
+
       return response
     else:
       return None
@@ -49,22 +55,32 @@ sc = SlackClient(token)
 if sc.rtm_connect():
   for i in xrange(0,10):
     time.sleep(1)
+
   users = convert_to_dict(sc.server.users)
   channels = convert_to_dict(sc.server.channels)
+
   while True:
-    responses = sc.rtm_read()
-    for response in responses:
+    for response in sc.rtm_read():
       if 'type' in response and response['type'] == 'message' and 'text' in response:
         message = response['text']
-        user    = get_dict_item(users, response['user'], sc.server.users).name
-        channel = get_dict_item(channels, response['channel'], sc.server.channels).name
-        domain  = get_dict_item(channels, response['channel'], sc.server.channels).server.domain
+        user    = get_dict_item(users, 
+                                response['user'], 
+                                sc.server.users).name
+        channel = get_dict_item(channels, 
+                                response['channel'], 
+                                sc.server.channels).name
+        domain  = get_dict_item(channels, 
+                                response['channel'], 
+                                sc.server.channels).server.domain
         
         print "%s (%s/%s) -- %s" % (user,domain,channel,message)
+
         loud_response = louds.add(message,user,domain,channel)
+
         if loud_response:
           sc.rtm_send_message(response['channel'], loud_response)
           print "           -- %s" % loud_response
+
     time.sleep(1)
 else:
-  print "?"
+  print "Can't connect to  Slack?!?"
