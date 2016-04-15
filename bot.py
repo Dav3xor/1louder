@@ -13,11 +13,16 @@ class LoudHailer(object):
   all_caps    = re.compile('^[A-Z\d\s\!\@\#\$\%\^\&\*'+
                          '\(\)\_\+\-\=\[\]\{\}\|\;\''+
                          '\:\"\,\.\/\<\>\?]*$')
+  hey_user    = re.compile('^\<\@[A-Z0-9]*\>\: ')
   def num_uppercase(self, loud):
     return sum(1 for c in message if c in self.uppercase)
 
   def add(self, loud, user, channel, domain):
-    if re.match(self.all_caps, loud) and self.num_uppercase(loud)>4:
+    if re.match(self.hey_user, loud):
+      return None
+    if self.num_uppercase(loud) <= 4:
+      return None
+    if re.match(self.all_caps, loud):
       response = r.srandmember('louds')
       r.hset('loudlast', 
              domain+'/'+channel, 
