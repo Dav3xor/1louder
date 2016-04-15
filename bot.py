@@ -38,19 +38,17 @@ class LoudHailer(object):
 def convert_to_dict(items_list):
   return {i.id : i for i in items_list}
 
-def get_dict_item(cur_dict, item, key, search_list):
+def get_dict_item(cur_dict, item, search_list):
   if item not in cur_dict:
     cur_dict = convert_to_dict(search_list)
-  elif item not in cur_dict:
-    return "unknown"
-  elif key not in item:
+  if item not in cur_dict:
     return "unknown"
   else:
     return cur_dict[item]
 
+loud_user = "U0YGZREJX"
+token = "xoxb-32577864643-N2ldF06DW8kw6B8UKivPe7wj"
 
-loud_user = "sekrit"
-token     = "more sekrit"
 louds     = LoudHailer()
 
 sc = SlackClient(token)
@@ -64,18 +62,20 @@ if sc.rtm_connect():
 
   while True:
     for response in sc.rtm_read():
-      if 'type' in response and response['type'] == 'message' and 'text' in response:
-        message = response['text']
-        user    = get_dict_item(users, 
-                                response, 'user', 
-                                sc.server.users).name
-        channel = get_dict_item(channels, 
-                                response, 'channel', 
-                                sc.server.channels).name
-        domain  = get_dict_item(channels, 
-                                response, 'channel', 
-                                sc.server.channels).server.domain
-        
+      if 'type' in response and response['type'] == 'message':
+        try:
+          message = response['text']
+          user    = get_dict_item(users, 
+                                  response['user'], 
+                                  sc.server.users).name
+          channel = get_dict_item(channels, 
+                                  response['channel'], 
+                                  sc.server.channels).name
+          domain  = get_dict_item(channels, 
+                                  response['channel'], 
+                                  sc.server.channels).server.domain
+        except:
+          continue 
         print "%s (%s/%s) -- %s" % (user,domain,channel,message)
 
         loud_response = louds.add(message,user,domain,channel)
