@@ -51,8 +51,10 @@ def get_dict_item(cur_dict, item, search_list):
   else:
     return cur_dict[item]
 
-loud_user = "sekrit"
-token = "more sekrit"
+with open('sekrit','r') as sekrit_file:
+  token = sekrit_file.readline().strip()
+
+print token
 
 louds     = LoudHailer()
 
