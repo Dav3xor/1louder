@@ -14,8 +14,37 @@ class LoudHailer(object):
                          '\(\)\_\+\-\=\[\]\{\}\|\;\''+
                          '\:\"\,\.\/\<\>\?]*$')
   hey_user    = re.compile('^\<\@[A-Z0-9]*\>\: ')
+
   def num_uppercase(self, loud):
     return sum(1 for c in message if c in self.uppercase)
+
+  def do_commands(self, command, user, channel, domain):
+    def do_help(user, channel, domain):
+      return "```" + \
+             "!help      - this help message\n" + \
+             "!saywhat   - who said the last loud returned by 2louder\n" + \
+             "```" 
+
+    def do_saywhat(user, channel, domain):
+      print channel+'/'+domain
+      key = r.hget('loudlast', domain+'/'+channel)
+      if key:
+        info = r.hget('loudinfo', key)
+        if info:
+          info    = json.loads(info)
+          user    = info[0].upper()
+          domain  = info[1].upper()
+          channel = info[2].upper()
+          return "brother %s said that in %s-%s" % (user,domain,channel) 
+    
+    command  = command.strip().lower()
+    commands = { '!help':    do_help,
+                 '!saywhat': do_saywhat }
+
+    if command in commands:
+      return commands[command](user,channel,domain)
+    else:
+      return None
 
   def add(self, loud, user, channel, domain):
     if re.match(self.hey_user, loud):
@@ -90,7 +119,14 @@ if sc.rtm_connect():
         if loud_response:
           sc.rtm_send_message(response['channel'], loud_response)
           print "           -- %s" % loud_response
+          
 
+        command_response = louds.do_commands(message,user,domain,channel)
+        if command_response:
+          sc.rtm_send_message(response['channel'], command_response)
+          print "           -- %s" % command_response
+
+        
     time.sleep(1)
 else:
   print "Can't connect to  Slack?!?"
