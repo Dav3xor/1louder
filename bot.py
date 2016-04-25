@@ -17,15 +17,26 @@ class LoudHailer(object):
 
   def num_uppercase(self, loud):
     return sum(1 for c in message if c in self.uppercase)
-
-  def do_commands(self, command, user, channel, domain):
-    def do_help(user, channel, domain):
+  
+  def get_loud(self, domain, channel):
+    response = r.srandmember('louds')
+    r.hset('loudlast', 
+           domain+'/'+channel, 
+           response)
+    return response
+    
+  def do_commands(self, command, user, domain, channel):
+    def do_help(user, domain, channel):
       return "```" + \
              "!help      - this help message\n" + \
+             "!hitme     - returns a random loud\n" + \
              "!saywhat   - who said the last loud returned by 2louder\n" + \
              "```" 
 
-    def do_saywhat(user, channel, domain):
+    def do_hitme(user, domain, channel):
+      return self.get_loud(domain, channel)
+
+    def do_saywhat(user, domain, channel):
       print channel+'/'+domain
       key = r.hget('loudlast', domain+'/'+channel)
       if key:
@@ -39,23 +50,21 @@ class LoudHailer(object):
     
     command  = command.strip().lower()
     commands = { '!help':    do_help,
+                 '!hitme':   do_hitme,
                  '!saywhat': do_saywhat }
 
     if command in commands:
-      return commands[command](user,channel,domain)
+      return commands[command](user,domain,channel)
     else:
       return None
 
-  def add(self, loud, user, channel, domain):
+  def add(self, loud, user, domain, channel):
     if re.match(self.hey_user, loud):
       return None
     if self.num_uppercase(loud) <= 4:
       return None
     if re.match(self.all_caps, loud):
-      response = r.srandmember('louds')
-      r.hset('loudlast', 
-             domain+'/'+channel, 
-             response)
+      response = self.get_loud(domain, channel)
 
       if not r.sismember('louds',loud):
         r.sadd('louds',loud)
@@ -121,7 +130,7 @@ if sc.rtm_connect():
           print "           -- %s" % loud_response
           
 
-        command_response = louds.do_commands(message,user,domain,channel)
+        command_response = louds.do_commands(message,user,channel,domain)
         if command_response:
           sc.rtm_send_message(response['channel'], command_response)
           print "           -- %s" % command_response
