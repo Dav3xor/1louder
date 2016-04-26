@@ -29,32 +29,64 @@ class LoudHailer(object):
     def do_help(user, domain, channel):
       return "```" + \
              "!help      - this help message\n" + \
+             "!reward    - give a point to the last loud\n" + \
+             "!punish    - take a point from last loud\n" + \
              "!hitme     - returns a random loud\n" + \
              "!saywhat   - who said the last loud returned by 2louder\n" + \
              "```" 
 
+    def do_reward(user, domain, channel):
+      key = r.hget('loudlast', domain+'/'+channel)
+      if key:
+        points = r.hget('loudpoints', key)
+        if not points:
+          points = 1
+        else:
+          points = int(points) + 1
+        r.hset('loudpoints', key, points)
+    
+    def do_punish(user, domain, channel):
+      key = r.hget('loudlast', domain+'/'+channel)
+      if key:
+        points = r.hget('loudpoints', key)
+        if not points:
+          points = -1
+        else:
+          points = int(points) - 1
+        r.hset('loudpoints', key, points)
+         
     def do_hitme(user, domain, channel):
       return self.get_loud(domain, channel)
 
     def do_saywhat(user, domain, channel):
-      print channel+'/'+domain
+      print domain+'/'+channel
       key = r.hget('loudlast', domain+'/'+channel)
       if key:
-        info = r.hget('loudinfo', key)
+        info   = r.hget('loudinfo', key)
+        points = r.hget('loudpoints',key)
+
+        if not points:
+          points = 0
+        else:
+          points = int(points)
+
         if info:
           info    = json.loads(info)
           user    = info[0].upper()
           domain  = info[1].upper()
           channel = info[2].upper()
-          return "brother %s said that in %s-%s" % (user,domain,channel) 
+          return "brother %s said that in %s-%s (scoring %d points)" % (user,    domain,
+                                                                        channel, points) 
     
     command  = command.strip().lower()
     commands = { '!help':    do_help,
+                 '!reward':  do_reward,
+                 '!punish':  do_punish,
                  '!hitme':   do_hitme,
                  '!saywhat': do_saywhat }
 
     if command in commands:
-      return commands[command](user,domain,channel)
+      return commands[command](user,domain, channel)
     else:
       return None
 
@@ -70,7 +102,7 @@ class LoudHailer(object):
         r.sadd('louds',loud)
         r.hset('loudinfo', 
                loud, 
-               json.dumps([user,channel,domain]))
+               json.dumps([user, domain, channel]))
 
       return response
     else:
@@ -121,16 +153,16 @@ if sc.rtm_connect():
                                   sc.server.channels).server.domain
         except:
           continue 
-        print "%s (%s/%s) -- %s" % (user,domain,channel,message)
+        print "%s (%s/%s) -- %s" % (user, domain, channel, message)
 
-        loud_response = louds.add(message,user,domain,channel)
+        loud_response = louds.add(message, user, domain, channel)
 
         if loud_response:
           sc.rtm_send_message(response['channel'], loud_response)
           print "           -- %s" % loud_response
           
 
-        command_response = louds.do_commands(message,user,channel,domain)
+        command_response = louds.do_commands(message,user,domain,channel)
         if command_response:
           sc.rtm_send_message(response['channel'], command_response)
           print "           -- %s" % command_response
