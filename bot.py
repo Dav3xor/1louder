@@ -185,7 +185,7 @@ if sc.rtm_connect():
 
         loud_response = louds.add(message, user, domain, channel)
 
-        if loud_response and user != '2louder' and user != 'eletest':
+        if loud_response:
           sc.rtm_send_message(response['channel'], loud_response)
           print "           -- %s" % loud_response
           
