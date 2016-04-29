@@ -3,6 +3,8 @@ import re
 import json
 import time
 import string
+import random
+import requests
 from slackclient import SlackClient
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -28,11 +30,12 @@ class LoudHailer(object):
   def do_commands(self, command, user, domain, channel):
     def do_help(user, domain, channel):
       return "```" + \
-             "!help      - this help message\n" + \
-             "!reward    - give a point to the last loud\n" + \
-             "!punish    - take a point from last loud\n" + \
-             "!hitme     - returns a random loud\n" + \
-             "!saywhat   - who said the last loud returned by 2louder\n" + \
+             "!help      - This help message.\n" + \
+             "!reward    - Give a point to the last loud.\n" + \
+             "!punish    - Take a point from last loud.\n" + \
+             "!hitme     - Returns a random loud.\n" + \
+             "!saywhat   - Who said the last loud returned by 2louder.\n" + \
+             "!gifit     - Get a giphy gif from the last loud.\n" + \
              "```" 
 
     def do_reward(user, domain, channel):
@@ -78,12 +81,37 @@ class LoudHailer(object):
           return "brother %s said that in %s-%s (scoring %d points)" % (user,    domain,
                                                                         channel, points) 
     
+    def do_loud_gif(user, domain, channel):
+      loud = r.hget('loudlast', domain+'/'+channel)
+      if loud:
+        sample = loud.split(" ")[0:5]
+
+      url ='http://api.giphy.com/v1/gifs/search?'
+
+      if loud:
+        payload = {'q': "+".join(sample), 'api_key': 'dc6zaTOxFJmzC'}
+      else:
+        return "Papa broke the redis!"
+
+      try:
+        req = requests.get(url, params=payload)
+      except:
+        return "Had trouble getting that sweet gif!"
+
+      try:
+        json_response = req.json()
+        json_response_sample = random.choice(json_response['data'])
+        return json_response_sample['images']['downsized_medium']['url']
+      except:
+        return "Whoa bud, that gif json didn't parse!"
+
     command  = command.strip().lower()
     commands = { '!help':    do_help,
                  '!reward':  do_reward,
                  '!punish':  do_punish,
                  '!hitme':   do_hitme,
-                 '!saywhat': do_saywhat }
+                 '!saywhat': do_saywhat,
+                 '!gifit':   do_loud_gif, }
 
     if command in commands:
       return commands[command](user,domain, channel)
@@ -157,7 +185,7 @@ if sc.rtm_connect():
 
         loud_response = louds.add(message, user, domain, channel)
 
-        if loud_response:
+        if loud_response and user != '2louder' and user != 'eletest':
           sc.rtm_send_message(response['channel'], loud_response)
           print "           -- %s" % loud_response
           
