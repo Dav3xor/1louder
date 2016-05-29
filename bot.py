@@ -5,6 +5,7 @@ import time
 import string
 import random
 import requests
+import urbdict
 from slackclient import SlackClient
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
@@ -25,7 +26,8 @@ common_words = ['the', 'be', 'to', 'of', 'and', 'a', 'in',
                 'after', 'use', 'two', 'how', 'our', 'work',
                 'first', 'well', 'way', 'even', 'new', 'want',
                 'because', 'any', 'these', 'give', 'day', 'most',
-                'us', 'are' 'aren\'t', 'haven\'t']
+                'us', 'are' 'aren\'t', 'haven\'t', 'you\'ve',
+                'is', 'got']
 
 common_words = set([i.upper() for i in common_words])
 print "common words = " + str(common_words)
@@ -47,17 +49,21 @@ class LoudHailer(object):
     return response
     
   def do_commands(self, command, user, domain, channel):
-    def do_help(user, domain, channel):
+    def do_help(user, domain, channel, args):
       return "```" + \
-             "!help      - This help message.\n" + \
-             "!reward    - Give a point to the last loud.\n" + \
-             "!punish    - Take a point from last loud.\n" + \
-             "!hitme     - Returns a random loud.\n" + \
-             "!saywhat   - Who said the last loud returned by 2louder.\n" + \
-             "!gifit     - Get a giphy gif from the last loud.\n" + \
+             "!help          - This help message.\n" + \
+             "!define <term> - Look it up in your Funk & Wagnall's.\n" + \
+             "!reward        - Give a point to the last loud.\n" + \
+             "!punish        - Take a point from last loud.\n" + \
+             "!hitme         - Returns a random loud.\n" + \
+             "!saywhat       - Who said the last loud returned by 2louder.\n" + \
+             "!gifit         - Get a giphy gif from the last loud.\n" + \
              "```" 
+    
+    def do_definition(user, domain, channel, args):
+      return urbdict.define(args) 
 
-    def do_reward(user, domain, channel):
+    def do_reward(user, domain, channel, args):
       key = r.hget('loudlast', domain+'/'+channel)
       if key:
         points = r.hget('loudpoints', key)
@@ -67,7 +73,7 @@ class LoudHailer(object):
           points = int(points) + 1
         r.hset('loudpoints', key, points)
     
-    def do_punish(user, domain, channel):
+    def do_punish(user, domain, channel, args):
       key = r.hget('loudlast', domain+'/'+channel)
       if key:
         points = r.hget('loudpoints', key)
@@ -77,10 +83,10 @@ class LoudHailer(object):
           points = int(points) - 1
         r.hset('loudpoints', key, points)
          
-    def do_hitme(user, domain, channel):
+    def do_hitme(user, domain, channel, args):
       return self.get_loud(domain, channel)
 
-    def do_saywhat(user, domain, channel):
+    def do_saywhat(user, domain, channel, args):
       print domain+'/'+channel
       key = r.hget('loudlast', domain+'/'+channel)
       if key:
@@ -100,7 +106,7 @@ class LoudHailer(object):
           return "brother %s said that in %s-%s (scoring %d points)" % (user,    domain,
                                                                         channel, points) 
     
-    def do_loud_gif(user, domain, channel):
+    def do_loud_gif(user, domain, channel, args):
       loud = r.hget('loudlast', domain+'/'+channel)
       if not loud:
         return None
@@ -128,8 +134,12 @@ class LoudHailer(object):
       except:
         return "Whoa bud, that gif json didn't parse!"
 
-    command  = command.strip().lower()
+    args     = command.split(' ')
+    command  = args[0].strip().lower()
+    args     = ' '.join(args[1:])
+    
     commands = { '!help':    do_help,
+                 '!define':  do_definition,
                  '!reward':  do_reward,
                  '!punish':  do_punish,
                  '!hitme':   do_hitme,
@@ -137,7 +147,7 @@ class LoudHailer(object):
                  '!gifit':   do_loud_gif, }
 
     if command in commands:
-      return commands[command](user,domain, channel)
+      return commands[command](user,domain, channel, args)
     else:
       return None
 
