@@ -56,7 +56,7 @@ class LoudHailer(object):
              "!reward        - Give a point to the last loud.\n" + \
              "!punish        - Take a point from last loud.\n" + \
              "!hitme         - Returns a random loud.\n" + \
-             "!saywhat       - Who said the last loud returned by 2louder.\n" + \
+             "!whosay       - Who said the last loud returned by 2louder.\n" + \
              "!gifit         - Get a giphy gif from the last loud.\n" + \
              "```" 
     
@@ -86,7 +86,7 @@ class LoudHailer(object):
     def do_hitme(user, domain, channel, args):
       return self.get_loud(domain, channel)
 
-    def do_saywhat(user, domain, channel, args):
+    def do_whosay(user, domain, channel, args):
       print domain+'/'+channel
       key = r.hget('loudlast', domain+'/'+channel)
       if key:
@@ -143,7 +143,7 @@ class LoudHailer(object):
                  '!reward':  do_reward,
                  '!punish':  do_punish,
                  '!hitme':   do_hitme,
-                 '!saywhat': do_saywhat,
+                 '!whosay': do_whosay,
                  '!gifit':   do_loud_gif, }
 
     if command in commands:
